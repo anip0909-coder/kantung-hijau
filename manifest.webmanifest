@@ -1,0 +1,25 @@
+{
+  "id": "./",
+  "name": "Kantung Hijau",
+  "short_name": "Kantung",
+  "description": "Urus belanja, bajet dan simpanan keluarga. Berfungsi tanpa talian dan disegerak ke Google Sheets.",
+  "lang": "ms",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F6F0E0",
+  "theme_color": "#2F5D4C",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Rekod belanja", "short_name": "Belanja", "url": "./?aksi=belanja", "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Rekod simpanan", "short_name": "Simpanan", "url": "./?aksi=simpanan", "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }] }
+  ]
+}

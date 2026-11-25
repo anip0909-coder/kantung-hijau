@@ -423,7 +423,7 @@ function genDemo(){
 
 /* ============ state & persistence ============ */
 var LS='kantung-hijau-pwa-v1',LS_THEME='kantung-hijau-tema';
-var S={tab:'dash',month:monthOf(todayStr()),finView:'rekod',finFilter:'all',finQ:'',savFilter:'all',core:defaultCore(),tx:[],sav:[],plans:{},out:{tx:{},sav:{},plan:{},core:false},meta:{url:'',token:'',since:0,last:0},theme:'auto'};
+var S={tab:'dash',month:monthOf(todayStr()),finView:'rekod',finFilter:'all',finQ:'',savFilter:'all',savMonth:monthOf(todayStr()),core:defaultCore(),tx:[],sav:[],plans:{},out:{tx:{},sav:{},plan:{},core:false},meta:{url:'',token:'',since:0,last:0},theme:'auto'};
 var syncing=false,syncQueued=false,syncTimer=null,lastErr='',deferredInstall=null;
 
 (function loadLocal(){
@@ -860,9 +860,14 @@ function viewSav(){
  h+='<section class="card"><div class="card-h"><h2>Baki simpanan bulanan</h2></div><div class="chart" id="savtrend"></div></section>';
  var chips='<button type="button" class="chip" data-act="sav-filter" data-v="all" aria-pressed="'+(S.savFilter==='all')+'">Semua</button>';
  S.core.goals.forEach(function(g){chips+='<button type="button" class="chip" data-act="sav-filter" data-v="'+g.id+'" aria-pressed="'+(S.savFilter===g.id)+'">'+esc(g.name)+'</button>'});
- var list=S.sav.filter(function(s){return S.savFilter==='all'||s.goalId===S.savFilter}).sort(sortTx);
- h+='<section class="card"><div class="card-h"><h2>Rekod masuk dan keluar</h2></div><div class="chips">'+chips+'</div>';
- if(!list.length)h+='<div class="empty">Tiada rekod simpanan lagi.</div>';
+ var all=S.savMonth==='all',sm=S.savMonth,smLabel=all?'Semua bulan':MON[Number(sm.slice(5,7))-1]+' '+sm.slice(0,4);
+ var list=S.sav.filter(function(s){return (S.savFilter==='all'||s.goalId===S.savFilter)&&(all||monthOf(s.date)===sm)}).sort(sortTx);
+ var sIn=0,sOut=0;list.forEach(function(s){if(s.kind==='masuk')sIn+=s.amount;else sOut+=s.amount});
+ var maxM=addMonths(monthOf(todayStr()),2);
+ var stp='<div class="stepper" role="group" aria-label="Pilih bulan rekod simpanan"><button type="button" data-act="smprev" aria-label="Bulan sebelum"'+(all?' disabled':'')+'>'+ic('left',20)+'</button><span>'+smLabel+'</span><button type="button" data-act="smnext" aria-label="Bulan seterusnya"'+(all||sm>=maxM?' disabled':'')+'>'+ic('right',20)+'</button></div>';
+ h+='<section class="card"><div class="card-h" style="flex-wrap:wrap"><h2>Rekod masuk dan keluar</h2>'+stp+'</div><div class="chips">'+chips+'</div><div class="chips"><button type="button" class="chip" data-act="sm-all" aria-pressed="'+all+'">Semua bulan</button></div>';
+ h+='<div class="tiles" style="margin:4px 0 10px;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px"><div class="tile" style="padding:10px 12px"><div class="k">Masuk</div><div class="v" style="font-size:1rem">+'+money(sIn)+'</div></div><div class="tile" style="padding:10px 12px"><div class="k">Keluar</div><div class="v" style="font-size:1rem">-'+money(sOut)+'</div></div><div class="tile" style="padding:10px 12px"><div class="k">Bersih</div><div class="v" style="font-size:1rem">'+(sIn-sOut<0?'-':'')+money(Math.abs(sIn-sOut))+'</div></div></div>';
+ if(!list.length)h+='<div class="empty">Tiada rekod simpanan '+(all?'lagi':'bagi '+smLabel)+'.</div>';
  var cur='';
  list.slice(0,80).forEach(function(s){
   if(s.date!==cur){cur=s.date;h+='<div class="day">'+dayLabel(cur)+'</div>'}
@@ -1045,7 +1050,7 @@ function openTx(id){
 function openSav(id,kind){
  var s=id?S.sav.find(function(x){return x.id===id}):null;
  if(s)openSheet({type:'sav',id:s.id,kind:s.kind,amount:String(s.amount),date:s.date,goalId:s.goalId,note:s.note||'',canDelete:true});
- else{var g=(S.savFilter!=='all'&&findGoal(S.savFilter))?S.savFilter:(S.core.goals[0]?S.core.goals[0].id:null);openSheet({type:'sav',kind:kind||'masuk',amount:'',date:todayStr(),goalId:g,note:''})}
+ else{var g=(S.savFilter!=='all'&&findGoal(S.savFilter))?S.savFilter:(S.core.goals[0]?S.core.goals[0].id:null);openSheet({type:'sav',kind:kind||'masuk',amount:'',date:(S.savMonth==='all'||S.savMonth===monthOf(todayStr()))?todayStr():S.savMonth+'-01',goalId:g,note:''})}
 }
 function saveSheet(){
  collect();
@@ -1070,7 +1075,7 @@ function saveSheet(){
   if(d.kind==='keluar'&&a>goalBalance(d.goalId,d.id)+0.001)return fail('Baki matlamat ini tidak mencukupi untuk pengeluaran tersebut.');
   var o=d.id?S.sav.find(function(x){return x.id===d.id}):null;
   var r={id:d.id||uid(),kind:d.kind,date:d.date,goalId:d.goalId,amount:a,note:(d.note||'').trim()};
-  if(o){S.sav[S.sav.indexOf(o)]=r}else S.sav.push(r);markRec('sav',r);
+  if(o){S.sav[S.sav.indexOf(o)]=r}else S.sav.push(r);markRec('sav',r);if(S.savMonth!=='all')S.savMonth=monthOf(r.date);
   closeSheet();render();toast(o?'Rekod dikemas kini':'Rekod disimpan');
  }else if(d.type==='sub'){
   var nm=(d.name||'').trim(),b=d.budget===''?0:parseAmt(d.budget);
@@ -1140,6 +1145,9 @@ document.addEventListener('click',function(e){
   case 'edit-sav':openSav(ds.id);break;
   case 'fin-view':S.finView=ds.v;render();break;
   case 'fin-filter':S.finFilter=ds.v;render();break;
+  case 'smprev':if(S.savMonth!=='all'){S.savMonth=addMonths(S.savMonth,-1);render()}break;
+  case 'smnext':if(S.savMonth!=='all'&&S.savMonth<addMonths(monthOf(todayStr()),2)){S.savMonth=addMonths(S.savMonth,1);render()}break;
+  case 'sm-all':S.savMonth=S.savMonth==='all'?monthOf(todayStr()):'all';render();break;
   case 'sav-filter':S.savFilter=(S.savFilter===ds.v&&ds.v!=='all')?'all':ds.v;render();break;
   case 'edit-sub':{var sb=planSub(S.month,ds.cat,ds.sub);if(sb)openSheet({type:'sub',m:S.month,catId:ds.cat,subId:sb.id,name:sb.name,budget:String(sb.budget||0),canDelete:true});break}
   case 'add-sub':openSheet({type:'sub',m:S.month,catId:ds.cat,subId:null,name:'',budget:''});break;
